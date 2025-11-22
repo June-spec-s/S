@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>文本编辑器</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary-color: #4b6cb7;
+            --secondary-color: #182848;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: #333;
+            padding: 0;
+            margin: 0;
+            overflow-x: hidden;
+        }
+        
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .status-bar {
+            height: 44px;
+            background-color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .content-container {
+            padding: 15px;
+            padding-bottom: 70px; /* 为底部导航留出空间 */
+        }
+        
+        .page {
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+        
+        .font-selector {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 15px;
+            background-color: white;
+            flex: 1;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .input-section {
+            margin-bottom: 20px;
+        }
+        
+        .input-section textarea {
+            width: 100%;
+            height: 60vh;
+            min-height: 300px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: none;
+            transition: var(--transition);
+            font-family: inherit;
+            box-shadow: var(--box-shadow);
+        }
+        
+        .input-section textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(75, 108, 183, 0.2);
+        }
+        
+        .preview-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #eee;
+            line-height: 1.6;
+            box-shadow: var(--box-shadow);
+            min-height: 60vh;
+        }
+        
+        .preview-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--secondary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        
+        .preview-list {
+            margin-left: 20px;
+        }
+        
+        .preview-list ol {
+            margin-bottom: 15px;
+        }
+        
+        .preview-list li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+            padding-left: 5px;
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #ddd;
+            margin: 15px 0;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            font-size: 17px;
+            margin: 15px 0 10px 0;
+            color: var(--primary-color);
+        }
+        
+        .subtitle {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--success-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transition: var(--transition);
+            z-index: 1000;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90%;
+            overflow: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background-color: white;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            position: sticky;
+            bottom: 0;
+            background-color: white;
+            border-radius: 0 0 15px 15px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .export-image {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 底部导航栏 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 8px 0;
+            color: #6c757d;
+            font-size: 12px;
+            transition: var(--transition);
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 480px) {
+            .controls-row {
+                flex-direction: column;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            button, .font-selector {
+                width: 100%;
+            }
+            
+            .modal-footer {
+                flex-direction: column;
+            }
+            
+            .status-bar {
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .header {
+                padding: 12px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .content-container {
+                padding: 15px 10px;
+            }
+            
+            .input-section textarea {
+                height: 55vh;
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 600px;
+                margin: 20px auto;
+                border-radius: var(--border-radius);
+                min-height: calc(100vh - 40px);
+            }
+            
+            .bottom-nav {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="status-bar">文本编辑器</div>
+        
+        <div class="header">
+            <h1>文本编辑器</h1>
+        </div>
+        
+        <div class="content-container">
+            <!-- 编辑页面 -->
+            <div id="editPage" class="page active">
+                <div class="controls-container">
+                    <div class="controls-row">
+                        <div class="control-group">
+                            <button id="addDividerBtn" class="btn-secondary">
+                                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
+                                </svg>
+                                分割线
+                            </button>
+                            <select id="fontSelector" class="font-selector">
+                                <option value="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif">默认字体</option>
+                                <option value="'SimSun', '宋体', serif">宋体</option>
+                                <option value="'Microsoft YaHei', '微软雅黑', sans-serif">微软雅黑</option>
+                                <option value="'KaiTi', '楷体', serif">楷体</option>
+                                <option value="'Arial', sans-serif">Arial</option>
+                                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="controls-row">
+                        <div class="control-group">
+                            <button id="copyBtn" class="btn-primary">
+                                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                </svg>
+                                复制全文
+                            </button>
+                            <button id="exportBtn" class="btn-success">
+                                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                                </svg>
+                                导出图片
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-section">
+                    <textarea id="textInput" placeholder="请输入文本内容，第一行将作为标题，后续每行将转为有序列表项。使用空行添加分割线。"></textarea>
+                </div>
+            </div>
+            
+            <!-- 预览页面 -->
+            <div id="previewPage" class="page">
+                <div class="preview-section">
+                    <div id="previewContent">
+                        <div class="preview-placeholder">预览将在此处显示...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 底部导航栏 -->
+        <div class="bottom-nav">
+            <div class="nav-item active" data-tab="edit">
+                <div class="nav-icon">📝</div>
+                <span>编辑</span>
+            </div>
+            <div class="nav-item" data-tab="preview">
+                <div class="nav-icon">👁️</div>
+                <span>预览</span>
+            </div>
+            <div class="nav-item" data-tab="copy">
+                <div class="nav-icon">📋</div>
+                <span>复制</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图片预览模态框 -->
+    <div id="imagePreviewModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>图片预览</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <img id="previewImage" class="export-image" alt="导出的图片">
+            </div>
+            <div class="modal-footer">
+                <button id="shareBtn" class="btn-primary">分享图片</button>
+                <button id="saveBtn" class="btn-success">保存图片</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast" class="toast">操作成功！</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textInput = document.getElementById('textInput');
+            const previewContent = document.getElementById('previewContent');
+            const addDividerBtn = document.getElementById('addDividerBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const fontSelector = document.getElementById('fontSelector');
+            const toast = document.getElementById('toast');
+            const imagePreviewModal = document.getElementById('imagePreviewModal');
+            const previewImage = document.getElementById('previewImage');
+            const closeBtn = document.querySelector('.close-btn');
+            const shareBtn = document.getElementById('shareBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const editPage = document.getElementById('editPage');
+            const previewPage = document.getElementById('previewPage');
+            
+            // 当前导出的图片数据URL
+            let currentExportImageUrl = '';
+            
+            // 初始渲染预览
+            updatePreview();
+            
+            // 监听输入变化
+            textInput.addEventListener('input', updatePreview);
+            
+            // 监听字体选择变化
+            fontSelector.addEventListener('change', updatePreview);
+            
+            // 添加分割线
+            addDividerBtn.addEventListener('click', function() {
+                const cursorPos = textInput.selectionStart;
+                const textBefore = textInput.value.substring(0, cursorPos);
+                const textAfter = textInput.value.substring(cursorPos);
+                
+                // 插入带有特殊标记的分割线
+                textInput.value = textBefore + '\n--- 分割线 ---\n' + textAfter;
+                updatePreview();
+                
+                // 将光标位置移动到插入的分割线后
+                const newCursorPos = cursorPos + 13;
+                textInput.setSelectionRange(newCursorPos, newCursorPos);
+                textInput.focus();
+                
+                showToast('分割线已添加');
+            });
+            
+            // 复制全文
+            copyBtn.addEventListener('click', function() {
+                copyText();
+            });
+            
+            // 复制文本函数
+            function copyText() {
+                // 获取纯文本内容
+                const textToCopy = getFormattedText();
+                
+                if (!textToCopy.trim()) {
+                    showToast('没有内容可复制', true);
+                    return;
+                }
+                
+                // 使用Clipboard API复制文本
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textToCopy).then(function() {
+                        showToast('内容已复制到剪贴板');
+                    }).catch(function(err) {
+                        console.error('复制失败: ', err);
+                        fallbackCopyText(textToCopy);
+                    });
+                } else {
+                    // 降级方案
+                    fallbackCopyText(textToCopy);
+                }
+            }
+            
+            // 降级复制方案
+            function fallbackCopyText(text) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = 0;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showToast('内容已复制到剪贴板');
+                    } else {
+                        showToast('复制失败，请重试', true);
+                    }
+                } catch (err) {
+                    console.error('复制失败: ', err);
+                    showToast('复制失败，请重试', true);
+                }
+                
+                document.body.removeChild(textArea);
+            }
+            
+            // 导出为图片
+            exportBtn.addEventListener('click', function() {
+                if (!textInput.value.trim()) {
+                    showToast('没有内容可导出', true);
+                    return;
+                }
+                
+                // 创建一个用于导出的容器，增加适当内边距
+                const exportContainer = document.createElement('div');
+                exportContainer.style.padding = '30px';
+                exportContainer.style.backgroundColor = 'white';
+                exportContainer.style.lineHeight = '1.5';
+                exportContainer.style.maxWidth = '500px';
+                exportContainer.style.margin = '0 auto';
+                exportContainer.style.fontFamily = fontSelector.value;
+                
+                // 复制预览内容到导出容器
+                exportContainer.innerHTML = previewContent.innerHTML;
+                
+                // 调整导出容器的样式，使其更加紧凑
+                const title = exportContainer.querySelector('.preview-title');
+                if (title) {
+                    title.style.marginBottom = '12px';
+                    title.style.paddingBottom = '8px';
+                    title.style.fontSize = '20px';
+                }
+                
+                const listItems = exportContainer.querySelectorAll('li');
+                listItems.forEach(item => {
+                    item.style.marginBottom = '6px';
+                });
+                
+                const dividers = exportContainer.querySelectorAll('.divider');
+                dividers.forEach(divider => {
+                    divider.style.margin = '12px 0';
+                });
+                
+                // 临时添加到DOM中
+                document.body.appendChild(exportContainer);
+                
+                // 使用html2canvas导出
+                html2canvas(exportContainer, {
+                    backgroundColor: '#ffffff',
+                    scale: 2, // 提高导出图片质量
+                    useCORS: true,
+                    logging: false
+                }).then(function(canvas) {
+                    // 获取图片数据URL
+                    currentExportImageUrl = canvas.toDataURL('image/png');
+                    
+                    // 显示预览
+                    previewImage.src = currentExportImageUrl;
+                    imagePreviewModal.style.display = 'flex';
+                    
+                    // 移除临时容器
+                    document.body.removeChild(exportContainer);
+                }).catch(function(err) {
+                    console.error('导出失败: ', err);
+                    showToast('导出失败，请重试', true);
+                    document.body.removeChild(exportContainer);
+                });
+            });
+            
+            // 关闭模态框
+            closeBtn.addEventListener('click', function() {
+                imagePreviewModal.style.display = 'none';
+            });
+            
+            // 点击模态框外部关闭
+            imagePreviewModal.addEventListener('click', function(e) {
+                if (e.target === imagePreviewModal) {
+                    imagePreviewModal.style.display = 'none';
+                }
+            });
+            
+            // 分享图片
+            shareBtn.addEventListener('click', function() {
+                if (!currentExportImageUrl) {
+                    showToast('没有图片可分享', true);
+                    return;
+                }
+                
+                // 尝试使用Web Share API
+                if (navigator.share) {
+                    // 将数据URL转换为Blob
+                    fetch(currentExportImageUrl)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            const file = new File([blob], "文本内容.png", { type: "image/png" });
+                            navigator.share({
+                                files: [file],
+                                title: '文本内容',
+                                text: '这是我使用文本编辑器创建的内容'
+                            })
+                            .then(() => showToast('分享成功'))
+                            .catch(err => {
+                                console.error('分享失败:', err);
+                                showToast('分享失败，请尝试保存图片后分享', true);
+                            });
+                        });
+                } else {
+                    // 降级方案：复制图片到剪贴板
+                    copyImageToClipboard(currentExportImageUrl);
+                }
+            });
+            
+            // 保存图片
+            saveBtn.addEventListener('click', function() {
+                if (!currentExportImageUrl) {
+                    showToast('没有图片可保存', true);
+                    return;
+                }
+                
+                // 创建下载链接
+                const link = document.createElement('a');
+                link.download = '文本内容.png';
+                link.href = currentExportImageUrl;
+                link.click();
+                
+                showToast('图片已保存');
+                imagePreviewModal.style.display = 'none';
+            });
+            
+            // 复制图片到剪贴板
+            function copyImageToClipboard(dataUrl) {
+                // 将数据URL转换为Blob
+                fetch(dataUrl)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        // 使用Clipboard API写入图片
+                        if (navigator.clipboard && navigator.clipboard.write) {
+                            navigator.clipboard.write([
+                                new ClipboardItem({
+                                    [blob.type]: blob
+                                })
+                            ]).then(() => {
+                                showToast('图片已复制到剪贴板，可以粘贴到其他应用中');
+                            }).catch(err => {
+                                console.error('复制图片失败:', err);
+                                showToast('复制图片失败，请尝试保存图片', true);
+                            });
+                        } else {
+                            showToast('您的浏览器不支持直接复制图片，请使用保存功能', true);
+                        }
+                    });
+            }
+            
+            // 判断一行是否只包含数字和符号
+            function isOnlyNumbersAndSymbols(line) {
+                // 移除非数字和符号的字符，如果结果为空字符串，则说明只包含数字和符号
+                return line.replace(/[\d\s\-\_\.\:\,;!@#$%^&*()+=]/g, '') === '';
+            }
+            
+            // 更新预览内容
+            function updatePreview() {
+                const lines = textInput.value.split('\n');
+                const selectedFont = fontSelector.value;
+                
+                // 应用选中的字体到整个预览区域
+                previewContent.style.fontFamily = selectedFont;
+                
+                // 清除预览内容
+                previewContent.innerHTML = '';
+                
+                if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
+                    previewContent.innerHTML = '<div class="preview-placeholder">预览将在此处显示...</div>';
+                    return;
+                }
+                
+                // 检查第一行是否只包含数字和符号
+                const firstLine = lines[0].trim();
+                const isSpecialFormat = isOnlyNumbersAndSymbols(firstLine);
+                
+                // 添加标题
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = firstLine;
+                previewContent.appendChild(title);
+                
+                // 如果第一行只包含数字和符号，添加第二行作为副标题
+                let listStartIndex = 1;
+                if (isSpecialFormat && lines.length > 1 && lines[1].trim() !== '') {
+                    const subtitle = document.createElement('div');
+                    subtitle.className = 'subtitle';
+                    subtitle.textContent = lines[1].trim();
+                    previewContent.appendChild(subtitle);
+                    listStartIndex = 2;
+                }
+                
+                // 处理剩余内容
+                let currentList = document.createElement('ol');
+                let listNumber = 1;
+                let isAfterDivider = false;
+                
+                for (let i = listStartIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // 检查是否是分割线（包含"分割线"字样或空行）
+                    if (line === '' || line.includes('分割线')) {
+                        // 分割线
+                        if (i < lines.length - 1) { // 避免在末尾添加多余的分割线
+                            // 添加当前列表到预览
+                            if (currentList.children.length > 0) {
+                                previewContent.appendChild(currentList);
+                            }
+                            
+                            // 创建新的列表
+                            currentList = document.createElement('ol');
+                            listNumber = 1;
+                            isAfterDivider = true;
+                            
+                            // 添加分割线
+                            const divider = document.createElement('div');
+                            divider.className = 'divider';
+                            previewContent.appendChild(divider);
+                        }
+                    } else {
+                        // 只有在第一行全是数字和符号的情况下，分割线后的第一行才加粗显示
+                        if (isAfterDivider && isSpecialFormat) {
+                            const sectionTitle = document.createElement('div');
+                            sectionTitle.className = 'section-title';
+                            sectionTitle.textContent = line;
+                            previewContent.appendChild(sectionTitle);
+                            isAfterDivider = false;
+                        } else {
+                            // 添加列表项
+                            const listItem = document.createElement('li');
+                            listItem.textContent = line;
+                            currentList.appendChild(listItem);
+                            listNumber++;
+                        }
+                    }
+                }
+                
+                // 添加最后一个列表
+                if (currentList.children.length > 0) {
+                    previewContent.appendChild(currentList);
+                }
+            }
+            
+            // 获取格式化文本（用于复制）
+            function getFormattedText() {
+                const lines = textInput.value.split('\n');
+                let result = '';
+                
+                if (lines.length === 0) return '';
+                
+                // 检查第一行是否只包含数字和符号
+                const firstLine = lines[0].trim();
+                const isSpecialFormat = isOnlyNumbersAndSymbols(firstLine);
+                
+                // 添加标题
+                result += firstLine + '\n';
+                
+                // 如果第一行只包含数字和符号，添加第二行作为副标题
+                let listStartIndex = 1;
+                if (isSpecialFormat && lines.length > 1 && lines[1].trim() !== '') {
+                    result += lines[1].trim() + '\n';
+                    listStartIndex = 2;
+                }
+                
+                // 添加列表
+                let listNumber = 1;
+                let isAfterDivider = false;
+                
+                for (let i = listStartIndex; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    // 跳过分割线
+                    if (line === '' || line.includes('分割线')) {
+                        isAfterDivider = true;
+                    } else {
+                        // 只有在第一行全是数字和符号的情况下，分割线后的第一行才不加序号
+                        if (isAfterDivider && isSpecialFormat) {
+                            result += line + '\n';
+                            isAfterDivider = false;
+                        } else {
+                            result += `${listNumber}. ${line}\n`;
+                            listNumber++;
+                        }
+                    }
+                }
+                
+                return result;
+            }
+            
+            // 显示提示信息
+            function showToast(message, isError = false) {
+                toast.textContent = message;
+                toast.style.backgroundColor = isError ? '#dc3545' : '#28a745';
+                toast.classList.add('show');
+                
+                setTimeout(function() {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+            
+            // 底部导航交互
+            const navItems = document.querySelectorAll('.nav-item');
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const tab = this.getAttribute('data-tab');
+                    
+                    // 更新活动状态
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // 根据标签切换显示页面
+                    switch(tab) {
+                        case 'edit':
+                            editPage.classList.add('active');
+                            previewPage.classList.remove('active');
+                            break;
+                        case 'preview':
+                            editPage.classList.remove('active');
+                            previewPage.classList.add('active');
+                            // 确保预览内容是最新的
+                            updatePreview();
+                            break;
+                        case 'copy':
+                            // 执行复制操作
+                            copyText();
+                            // 短暂延迟后切换回编辑状态
+                            setTimeout(() => {
+                                navItems[0].click();
+                            }, 1500);
+                            break;
+                    }
+                });
+            });
+            
+            // 初始状态：输入框空白
+            textInput.value = "";
+            updatePreview();
+        });
+    </script>
+</body>
+</html>
